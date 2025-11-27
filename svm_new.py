@@ -1,10 +1,9 @@
 # SVM
 import pandas as pd
-from utils_dataset import dataset_loading, join_datasets, k_mers_sparse_matrix
-from sklearn.model_selection import GridSearchCV, train_test_split, StratifiedKFold, KFold
+from utils_dataset import dataset_loading,join_datasets, k_mers_sparse_matrix
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, KFold
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 from sklearn.svm import SVC 
-import numpy as np
 import time
 import warnings
 import os
@@ -16,7 +15,7 @@ def run_exp(k_list, full, clean, trojan, metrics_csv, metrics_columns):
 
     
     metrics_df = pd.DataFrame(columns=metrics_columns)
-
+    
     for k in k_list:
 
         start_time = time.time()
@@ -27,9 +26,9 @@ def run_exp(k_list, full, clean, trojan, metrics_csv, metrics_columns):
 
         acc_outer = list()
         f1_outer = list()
-
+       
         for split, (train_ix, test_ix) in enumerate(skf_outer.split(X, y), start=1):
-
+            
             X_train, X_test = X[train_ix, :], X[test_ix, :]
             y_train, y_test = y[train_ix], y[test_ix]
 
@@ -126,7 +125,7 @@ def run_exp(k_list, full, clean, trojan, metrics_csv, metrics_columns):
         print(f"\nTime for k = {k}: {elapsed_minutes:.2f} minutes")
 
         print("\n")
-
+        
     return metrics_df
 
 
@@ -138,13 +137,13 @@ def main(fragment_len, retention_pos, encryption_key, dataset_type, algo, full, 
     metrics_csv = os.path.join(metrics_folder, 
                             f"metrics_len_{fragment_len}_pos_{retention_pos}_key_{encryption_key}_double_cv(5,4)_dataset_len_{len(full)}_{dataset_type}.csv")
     
-    print(f"========== Running {algo} for fragment len = {fragment_len}, retention position = {retention_pos}, encryption key = {encryption_key} ==========")
+    print(f"\n========== Running {algo} for fragment len = {fragment_len}, retention position = {retention_pos}, encryption key = {encryption_key} ==========")
 
     run_exp(k_list, full, clean, trojan, metrics_csv, metrics_columns)
     
 if __name__ == "__main__":
 
-    fragment_len = [5]
+    fragment_len = [1,3,5]
     retention_pos = [0,1,2,3,4,5]
     encryption_key = [0,10,30]
     #dataset_num_clean = 0
@@ -164,15 +163,16 @@ if __name__ == "__main__":
 
     for frag_l in fragment_len:
         for ret_p in retention_pos:
-            for enc_k in encryption_key:
+            if ret_p <= frag_l + 1:
+                for enc_k in encryption_key:
 
-                full,clean,trojan = join_datasets(dataset=dataset_type, 
-                                    dataset_number=int(dataset_len/2000), 
-                                    fragment_len=frag_l, 
-                                    retention_pos=ret_p, 
-                                    encryption_key=enc_k)
-    
-                main(frag_l, ret_p, enc_k, 
-                    dataset_type=dataset_type, algo=algo, 
-                    full=full, clean=clean, trojan=trojan, 
-                    k_list=k_list, metrics_columns=metrics_columns)
+                    full,clean,trojan = join_datasets(dataset=dataset_type, 
+                                        dataset_number=int(dataset_len/2000), 
+                                        fragment_len=frag_l, 
+                                        retention_pos=ret_p, 
+                                        encryption_key=enc_k)
+        
+                    main(frag_l, ret_p, enc_k, 
+                        dataset_type=dataset_type, algo=algo, 
+                        full=full, clean=clean, trojan=trojan, 
+                        k_list=k_list, metrics_columns=metrics_columns)
