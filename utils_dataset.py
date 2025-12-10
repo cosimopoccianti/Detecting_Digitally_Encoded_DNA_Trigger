@@ -147,15 +147,15 @@ def k_mers_sparse_matrix(k, dataset_full, dataset_clean, dataset_trojan, unique_
     return X,y,retained_kmers
 
 
-def join_datasets(dataset:['','greedy','straight'],fragment_len, retention_pos, encryption_key,  dataset_number=2):
+def join_datasets(dataset:['','greedy','straight','unique'],fragment_len, retention_pos, encryption_key,  dataset_number=2):
     if encryption_key in [0,10,20,30,40,50]:
-        base_path = f"DNA_attacks/datasets_{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
+        base_path = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/datasets_{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
 
         dataset_clean_tot = []
         dataset_trojan_tot = []
         dataset_num = 0
         
-        if dataset == 'greedy':
+        if dataset == 'greedy' or dataset == 'unique':
             file_type = "nw_best_greedy_trojan_insertion_dataset.txt"
         elif dataset == 'straight':
             file_type = "nw_best_straight_forward_trojan_insertion_dataset.txt"
@@ -214,7 +214,7 @@ def join_datasets(dataset:['','greedy','straight'],fragment_len, retention_pos, 
         
         # Iterate through each encryption key
         for enc_key in encryption_keys_list:
-            base_path = f"DNA_attacks/datasets_{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{enc_key}"
+            base_path = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/datasets_{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{enc_key}"
             
             # Process dataset_0 to dataset_(dataset_number-1) for each encryption key
             for dataset_num in range(dataset_number):
@@ -257,7 +257,7 @@ def join_datasets(dataset:['','greedy','straight'],fragment_len, retention_pos, 
                 print("Len trojan dataset: ", len(dataset_trojan_tot))
         
         # Save the mixed dataset
-        base_path_mix = f"DNA_attacks/datasets_{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_mix"
+        base_path_mix = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/datasets_{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_mix"
         base = Path(os.path.join(base_path_mix, "dataset_mix"))
         base.mkdir(parents=True, exist_ok=True)
 

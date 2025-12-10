@@ -51,7 +51,7 @@ def summary_df(S_d,pi_d,folder,pattern,f_l,r_p,e_k):
     files = list(folder.glob(pattern))
 
     df = pd.read_csv(files[0])
-    df_tot = df[df["Outer_KFold"] == "mean"].copy()
+    df_tot = df[df["Outer_KFold"] == "total"].copy()
     df_tot.insert(0, "fragment_len", f_l)
     df_tot.insert(1, "retention_position", r_p)
     df_tot.insert(2, "encryption_key", e_k)
@@ -65,7 +65,7 @@ def summary_df(S_d,pi_d,folder,pattern,f_l,r_p,e_k):
 
 def main(fragment_len, retention_position,encryption_key):
 
-    k_list = [2,3,4]#[i for i in range(2,26)]
+    k_list = [i for i in range(2,26)]
     outer_dfs = []
 
     for f_l in fragment_len:
@@ -88,14 +88,14 @@ def main(fragment_len, retention_position,encryption_key):
                     outer_dfs.append(df_inner)
 
     df_outer = pd.concat(outer_dfs, ignore_index=True)
-    df_outer.to_csv(f"DNA_attacks/metrics/SVM/Balanced/metrics_summary_double_cv_entropy_pi.csv", index=False)
+    df_outer.to_csv(f"DNA_attacks/metrics/SVM/Balanced/metrics_summary_double_cv_entropy_pi_f4.csv", index=False)
 
                     
 if __name__ == "__main__":
 
-    fragment_len = [5]
-    retention_position = [0,1,2]
-    encryption_key = [0,10]
+    fragment_len = [4]
+    retention_position = [0,1,2,3,4,5]
+    encryption_key = [0]
 
     main(fragment_len=fragment_len,retention_position=retention_position,encryption_key=encryption_key)
 

@@ -20,7 +20,7 @@ def run_exp(k_list, full, clean, trojan, metrics_csv, metrics_columns):
 
         start_time = time.time()
 
-        X,y,kmers_list = k_mers_sparse_matrix(k, full, clean, trojan, features_limit=100)
+        X,y,kmers_list = k_mers_sparse_matrix(k, full, clean, trojan, features_limit=100)#, features_limit=100)
 
         skf_outer = StratifiedKFold(n_splits=5, shuffle=True, random_state=18)
 
@@ -129,11 +129,11 @@ def run_exp(k_list, full, clean, trojan, metrics_csv, metrics_columns):
 
 def main(fragment_len, retention_pos, encryption_key, dataset_type, algo, full, clean, trojan, k_list, metrics_columns):
 
-    metrics_folder = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/metrics/{algo}/Balanced/fragment_len_{fragment_len}/"
+    metrics_folder = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/metrics/{algo}/Balanced/{dataset_type}/fragment_len_{fragment_len}/"
     os.makedirs(metrics_folder, exist_ok=True)
 
     metrics_csv = os.path.join(metrics_folder, 
-                            f"metrics_len_{fragment_len}_pos_{retention_pos}_key_{encryption_key}_double_cv(5,4)_dataset_len_{len(full)}_{dataset_type}.csv")
+                            f"metrics_len_{fragment_len}_pos_{retention_pos}_key_{encryption_key}_double_cv(5,4)_dataset_len_{len(full)}_{dataset_type}_no_duplicates.csv")
     
     print(f"\n========== Running {algo} for fragment len = {fragment_len}, retention position = {retention_pos}, encryption key = {encryption_key} ==========")
 
@@ -141,12 +141,12 @@ def main(fragment_len, retention_pos, encryption_key, dataset_type, algo, full, 
     
 if __name__ == "__main__":
 
-    fragment_len = [1,2,3,2,5]
-    retention_pos = [0,1,2,3,4,5]
+    fragment_len = [2]
+    retention_pos = [1]
     encryption_key = [0]
     #dataset_num_clean = 0
     #dataset_num_trojan = 0
-    dataset_type = 'greedy'
+    dataset_type = 'unique'
     algo = 'SVM'
     dataset_len = 20000
     #file_type = f"{dataset_type}_forward" if dataset_type == 'straight' else dataset_type
