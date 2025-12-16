@@ -146,6 +146,71 @@ def k_mers_sparse_matrix(k, dataset_full, dataset_clean, dataset_trojan, unique_
 
     return X,y,retained_kmers
 
+def k_mers_sparse_matrix_no_shuffle(k, dataset_full, dataset_clean, dataset_trojan, unique_kmers='empty', variance_treshold=None, features_limit=None):
+    print(f"k = {k}")
+
+    if variance_treshold!=None and features_limit!=None:
+        raise ValueError('Please choose only one between variance threshold and features limit')
+    elif variance_treshold == None and features_limit == None:
+        print('No variance threshold or features limit selected, features will not be reduced')
+        variance_treshold = 0
+        
+
+    k_mers_computed = False
+    if unique_kmers=='empty':
+        k_mers_computed = True
+        unique_kmers = set()
+        for string in (dataset_full):
+            for index in range(len(string)-k+1):
+                unique_kmers.add(string[index: index+k])
+
+    print('Unique kmers: ', len(unique_kmers))
+
+    k_mers = list(unique_kmers)
+
+    vectorizer = CountVectorizer(vocabulary=k_mers, lowercase=False)
+    selector = VarianceThreshold(threshold=variance_treshold) 
+
+    genomes_split = [
+        " ".join([genome[i:i+k] for i in range(len(genome) - k + 1)])
+        for genome in dataset_clean
+    ]
+
+    X_clean = vectorizer.fit_transform(genomes_split)
+    y_clean = np.zeros(len(dataset_clean), int)
+
+    genomes_split_trojan = [
+        " ".join([genome[i:i+k] for i in range(len(genome) - k + 1)])
+        for genome in dataset_trojan
+    ]
+
+    X_trojan = vectorizer.transform(genomes_split_trojan)
+    y_trojan = np.ones(len(dataset_trojan), int)
+    X_full = vstack([X_clean, X_trojan])
+
+    if k_mers_computed and variance_treshold != None:
+        X = selector.fit_transform(X_full)
+        feature_mask = selector.get_support()
+        retained_kmers = [kmer for kmer, kept in zip(k_mers, feature_mask) if kept]
+    elif k_mers_computed and features_limit != None:
+        mean = X_full.mean(axis=0).A1
+        mean_sq = X_full.multiply(X_full).mean(axis=0).A1
+        variances = mean_sq - mean**2
+        top_idx = np.argsort(variances)[::-1][:features_limit]
+        X = X_full[:, top_idx]
+        retained_kmers = [k_mers[i] for i in top_idx]
+    else:
+        X = X_full
+        retained_kmers = unique_kmers
+
+    y = np.hstack([y_clean, y_trojan])
+
+    #print("Number of features: ", len(X.shape[0]))
+
+    print(f"Final X shape: {X.shape}")
+
+    return X,y,retained_kmers
+
 
 def join_datasets(dataset:['','greedy','straight','unique'],fragment_len, retention_pos, encryption_key,  dataset_number=2):
     if encryption_key in [0,10,20,30,40,50]:
