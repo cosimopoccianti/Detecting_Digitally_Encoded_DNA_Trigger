@@ -58,7 +58,7 @@ def run_exp(k_list, full, clean, trojan, metrics_csv, metrics_columns):
 
         start_time = time.time()
 
-        X,y,kmers_list = k_mers_sparse_matrix_no_shuffle(k, full, clean, trojan, features_limit=100)
+        X,y,kmers_list = k_mers_sparse_matrix_no_shuffle(k, full, clean, trojan, variance_treshold=0.01)
 
         acc_outer = list()
         f1_outer = list()
@@ -179,8 +179,8 @@ def main(fragment_len, retention_pos, encryption_key, dataset_type, algo, full, 
     
 if __name__ == "__main__":
 
-    fragment_len = [2]
-    retention_pos = [1]
+    fragment_len = [1,2,3,4,5]
+    retention_pos = [0,1,2,3,4,5]
     encryption_key = [0]
     #dataset_num_clean = 0
     #dataset_num_trojan = 0
