@@ -212,7 +212,7 @@ def k_mers_sparse_matrix_no_shuffle(k, dataset_full, dataset_clean, dataset_troj
     return X,y,retained_kmers
 
 
-def join_datasets(dataset:['','greedy','straight','unique'],fragment_len, retention_pos, encryption_key,  dataset_number=2):
+def join_datasets(dataset:['','greedy_ecoli','straight','unique','greedy_lentivirus'],fragment_len=5, retention_pos=5, encryption_key=0,  dataset_number=10):
     if encryption_key in [0,10,20,30,40,50]:
         base_path = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/datasets_{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
 
@@ -220,10 +220,11 @@ def join_datasets(dataset:['','greedy','straight','unique'],fragment_len, retent
         dataset_trojan_tot = []
         dataset_num = 0
         
-        if dataset == 'greedy' or dataset == 'unique':
-            file_type = "nw_best_greedy_trojan_insertion_dataset.txt"
-        elif dataset == 'straight':
+        if dataset == 'straight':
             file_type = "nw_best_straight_forward_trojan_insertion_dataset.txt"
+        else:
+            file_type = "nw_best_greedy_trojan_insertion_dataset.txt"
+            
 
         while True and dataset_num<dataset_number:
             dataset_folder = os.path.join(base_path, f"dataset_{dataset_num}")
