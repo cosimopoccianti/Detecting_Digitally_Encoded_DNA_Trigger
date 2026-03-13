@@ -8,7 +8,7 @@ from scipy.sparse import issparse
 from xgboost import XGBClassifier
 
 
-
+# Define algorithms and their hyperparameter search spaces
 REGISTRY = {
 
     "naive_bayes": {

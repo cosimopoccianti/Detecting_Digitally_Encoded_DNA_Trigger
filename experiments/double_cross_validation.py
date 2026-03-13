@@ -19,7 +19,7 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
 
         metrics_df = pd.DataFrame(columns=metrics_columns)
         
-
+        # Define the dataset partitioning for the outer cross-validation loop
         gkf = GroupKFold(n_splits=outer_folds_number)
 
         for split, (train_idx, test_idx) in enumerate(gkf.split(full_dataset, groups=groups)):
@@ -29,6 +29,8 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
             X_train, X_test = X[train_idx, :], X[test_idx, :]
             y_train, y_test = y[train_idx], y[test_idx]
 
+            # Retrieve the parameter search space for the selected algorithm and
+            # determine whether the feature matrix X must be converted from sparse to dense
             entry = REGISTRY[algo]
             preprocess = entry.get("preprocess", None) 
 
@@ -41,9 +43,10 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
             model = entry['estimator']()
             param_grid = entry['param_grid']
 
+            # Define the dataset partitioning for the inner cross-validation loop
             inner_gkf = GroupKFold(n_splits=inner_folds_number)
 
-            grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=inner_gkf, scoring='f1', verbose=1, n_jobs=-1)
+            grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=inner_gkf, scoring='f1', verbose=1, n_jobs=-1) 
 
             grid_search.fit(X_train, y_train, groups=train_groups)
             
@@ -51,6 +54,7 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
 
             print("\n... Refitting on the total training set ...")
 
+            # Refit the model after grid search
             best_model.fit(X_train, y_train)
 
             y_pred = best_model.predict(X_test)
@@ -73,6 +77,7 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
 
             print(f"Best parameter: {params_dict}")
 
+            # Save experiment metrics for the current outer-loop split
             metrics = [algo,
                        k,
                        n,
@@ -106,6 +111,7 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
 
         print('Average F1: %.3f' % f1)
         
+        # Save the average experiment metrics across all outer-loop splits
         metrics = [algo,
                    k,
                    n,
