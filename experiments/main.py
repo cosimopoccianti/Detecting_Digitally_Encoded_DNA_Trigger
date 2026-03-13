@@ -101,8 +101,10 @@ def parse_args():
     return args
 
 
-def main():
+#------------------------------------------------------------------------------
 
+
+def main():
 
     args=parse_args()
     
@@ -114,7 +116,7 @@ def main():
         print(f"######## {algo} ########")
         for f_l in args.fragment_len:
             for r_p in args.retention_pos:
-                if r_p <= f_l + 1:
+                if r_p <= f_l + 1: 
                     for e_k in args.encryption_key:
 
 
@@ -131,9 +133,11 @@ def main():
                         k_df = pd.DataFrame()
 
                         for k in k_list:
-                            
+
+                            # Create reads frequency matrix
                             X,y,k_mers_list = k_mers_sparse_matrix(k=k, dataset_full=full_dataset, dataset_clean=clean_dataset, dataset_infected=infected_dataset)
 
+                            #Compute k-mer TF-IDF scores from the frequency matrix
                             features_scores = tf_idf_k_mers_scores(X,k_mers_list)
 
                             for n in args.n_features:
@@ -141,7 +145,7 @@ def main():
                                 print(f"=== k: {k} - n: {n} ===")
 
                                 top_n_kmers = top_kmers(score_df=features_scores,n=n)
-                                # Reduce X to top-n kmers
+                                # Reduce X to top-n kmers based on TF-IDF
                                 X_reduced = X[:, top_n_kmers]
 
                                 # Reduce kmers_list consistently
