@@ -10,12 +10,14 @@ import time
 def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, outer_folds_number=5, inner_folds_number=4):
         
         start_time = time.time()
+        fold_time = start_time
         
         acc_outer = list()
         f1_outer = list()
 
         # Define output DataFrame columns with run metadata
-        metrics_columns = ["model","k","n","Outer_KFold","Model_params","TN","FP","FN","TP","Accuracy", "Precision", "Recall", "F1", "Selected_k_mers"]
+
+        metrics_columns = ["model","k","n","Outer_KFold","Model_params","TN","FP","FN","TP","Accuracy", "Precision", "Recall", "F1", "Runtime","Selected_k_mers"]
 
         metrics_df = pd.DataFrame(columns=metrics_columns)
         
@@ -76,6 +78,10 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
             params_dict = json.dumps(best_params)
 
             print(f"Best parameter: {params_dict}")
+            
+            
+            fold_elapsed_minutes = round((time.time() - fold_time) / 60,2)
+            fold_time = time.time()
 
             # Save experiment metrics for the current outer-loop split
             metrics = [algo,
@@ -91,6 +97,7 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
                             precision_score(y_test, y_pred, average='binary'),
                             recall_score(y_test, y_pred, average='binary'),
                             f1_score(y_test, y_pred, average='binary'),
+                            fold_elapsed_minutes,
                             k_mer_list]
             
             metrics_row = pd.DataFrame([metrics], columns=metrics_columns)
@@ -110,6 +117,9 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
         f1 = 2*((precision*recall)/(precision+recall))
 
         print('Average F1: %.3f' % f1)
+
+        end_time = time.time()
+        elapsed_minutes = round((end_time - start_time) / 60,2)
         
         # Save the average experiment metrics across all outer-loop splits
         metrics = [algo,
@@ -125,6 +135,7 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
                     precision,
                     recall,
                     f1,
+                    elapsed_minutes,
                     k_mer_list]
         
         
@@ -132,8 +143,6 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
         metrics_row = pd.DataFrame([metrics], columns=metrics_columns)
         metrics_df = pd.concat([metrics_df, metrics_row])
 
-        end_time = time.time()
-        elapsed_minutes = (end_time - start_time) / 60
 
         print(f"\nTime for k = {k}, n = {n}: {elapsed_minutes:.2f} minutes")
 

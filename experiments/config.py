@@ -52,7 +52,7 @@ REGISTRY = {
         "estimator": SVC,
         "param_grid": {'C': [1,10,100], 
                     'gamma': [0.1,0.01,0.001,0.0001], 
-                    'kernel': ['rbf']},
+                    'kernel': ['rbf','linear']},
     },
     
 
@@ -78,7 +78,7 @@ REGISTRY = {
         "param_grid": {
             "n_estimators":  [50, 100, 200],
             "learning_rate": [0.01, 0.1, 0.2],
-            "max_depth":     [3, 5, 7],
+            "max_depth":     [3, 5, 7, 9],
             "subsample":     [0.8, 1.0],
         },
     },
