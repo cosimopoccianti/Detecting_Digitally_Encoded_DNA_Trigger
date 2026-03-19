@@ -7,6 +7,10 @@ import pandas as pd
 import time
 
 
+def _safe_div(num, den, zero_value=0.0):
+    return num / den if den != 0 else zero_value
+
+
 def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, outer_folds_number=5, inner_folds_number=4):
         
         start_time = time.time()
@@ -63,7 +67,7 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
 
 
             acc = accuracy_score(y_test, y_pred)
-            f1 = f1_score(y_test, y_pred, average='binary')
+            f1 = f1_score(y_test, y_pred, average='binary', zero_division=None)
             # store the result
             acc_outer.append(acc)
             f1_outer.append(f1)
@@ -94,9 +98,9 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
                             FN,
                             TP,
                             accuracy_score(y_test, y_pred),
-                            precision_score(y_test, y_pred, average='binary'),
-                            recall_score(y_test, y_pred, average='binary'),
-                            f1_score(y_test, y_pred, average='binary'),
+                            precision_score(y_test, y_pred, average='binary', zero_division=None),
+                            recall_score(y_test, y_pred, average='binary', zero_division=None),
+                            f1_score(y_test, y_pred, average='binary', zero_division=None),
                             fold_elapsed_minutes,
                             k_mer_list]
             
@@ -111,10 +115,10 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
         FP = all_fold['FP'].sum()
         FN = all_fold['FN'].sum()
         TP = all_fold['TP'].sum()
-        accuracy = (TN+TP)/(TN+TP+FN+FP)
-        precision = TP/(TP+FP)
-        recall = TP/(TP+FN)
-        f1 = 2*((precision*recall)/(precision+recall))
+        accuracy = _safe_div(TN + TP, TN + TP + FN + FP, zero_value=None)
+        precision = _safe_div(TP, TP + FP, zero_value=None)
+        recall = _safe_div(TP, TP + FN, zero_value=None)
+        f1 = _safe_div(2 * (precision * recall), precision + recall, zero_value=None)
 
         print('Average F1: %.3f' % f1)
 
