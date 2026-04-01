@@ -51,8 +51,8 @@ REGISTRY = {
     "svm": {
         "estimator": SVC,
         "param_grid": {'C': [1,10,100], 
-                    'gamma': [0.1,0.01,0.001,0.0001], 
-                    'kernel': ['rbf','linear']},
+                    'gamma': [0.1,0.01,0.001], 
+                    'kernel': ['rbf']},
     },
     
 
