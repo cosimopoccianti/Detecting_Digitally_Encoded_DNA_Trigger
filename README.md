@@ -4,7 +4,7 @@ Code and data for the paper *"Detecting Digitally Encoded DNA Triggers for Troja
 
 ## Method overview
 
-1. **Encoding** — clean and Trojan-infected reads are converted into k-mer count matrices (`k` from `k_min` to `k_max`).
+1. **Encoding** — clean and infected reads are converted into k-mer count matrices (`k` from `k_min` to `k_max`).
 2. **Feature selection** — k-mers are scored by TF-IDF; the top-`n` are retained.
 3. **Classification** — LOGO cross-validation with `GroupKFold` (grouping by source sequence to avoid leakage); inner loop performs `GridSearchCV` hyperparameter tuning.
 4. **Payload encryption** — `mixed_key` mode trains on one encryption key and tests across the others.
