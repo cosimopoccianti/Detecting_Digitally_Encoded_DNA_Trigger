@@ -27,7 +27,7 @@ experiments/
 └── results/metrics/            # per-model output CSVs
 ```
 
-Datasets are organized by **fragment length** (1–5), **retention position** (0–5), and **encryption key** (0–50), with 10 sub-folders per configuration. Each leaf contains a clean (`non_trojan_dataset.txt`) and an infected (`nw_best_greedy_trojan_insertion_dataset.txt`) file.
+Datasets are organized by **fragment length** (1–5), **retention position** (0–5), and **encryption key** (0–50). Each leaf contains a clean (`non_trojan_dataset.txt`) and an infected (`nw_best_greedy_trojan_insertion_dataset.txt`) file.
 
 ## Requirements
 
