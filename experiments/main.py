@@ -98,7 +98,7 @@ def parse_args():
                         default=[0],
                         help="encryption_key")
     parser.add_argument("--n_features", type=n_feature_type, default= [*range(5,50,5), 50,75,100], help="encryption_key must be 'all', an integer, or a comma-separated list (e.g. 0,10,20,30,40,50)")
-    parser.add_argument("--out_dir", type=str, default="/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/experiments/results")
+    parser.add_argument("--out_dir", type=str, default="experiments/results")
     parser.add_argument("--random_state", type=int, default=42)
     parser.add_argument("--mode", type=str,default='double_cross_val', help="Available mode: --double_cross_val, --mixed_key, --shap")
     parser.add_argument("--n_shap_folds", type=int, default=1,
