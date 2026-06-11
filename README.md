@@ -41,7 +41,7 @@ numpy pandas scipy scikit-learn xgboost shap matplotlib joblib
 
 Run from the `experiments/` directory.
 
-**Nested cross-validation (default):**
+**LOGO cross-validation (default):**
 ```bash
 python3 main.py --algo svm --dataset ecoli --fragment_len 5 --retention_pos 5 --encryption_key 0
 ```
