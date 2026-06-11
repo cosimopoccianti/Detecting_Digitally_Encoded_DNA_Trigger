@@ -6,7 +6,8 @@ from scipy.sparse import vstack
 from sklearn.utils import shuffle
 import os
 from pathlib import Path
-from collections import defaultdict
+from collections import defaultdict, Counter
+import random
 
 # Functions 'padding' and 'dataset_loading' are taken from Islam et al.'s repository: https://github.com/sibleeislam/trojan-malware-in-bio-cyber-attacks
 
@@ -130,7 +131,7 @@ def k_mers_sparse_matrix(k, dataset_full, dataset_clean, dataset_infected, uniqu
 # This function loads and merges all datasets into a single dataset.
 def merge_datasets(dataset:['','ecoli','lentivirus'],fragment_len=5, retention_pos=5, encryption_key=0,  dataset_number=10):
     
-    base_path = f"DNA_attacks/experiments/datasets/{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
+    base_path = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/experiments/datasets/{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
 
     dataset_clean_tot = []
     dataset_infected_tot = []
@@ -266,3 +267,88 @@ def get_groups(dataset_clean, folds_number=5):
     full_groups = np.concatenate([clean_groups, clean_groups])
 
     return full_groups
+
+
+
+def deduplicate_train_test(clean_train, infected_train,
+                           clean_test,  infected_test,
+                           train_per_class=8000,
+                           test_per_class=2000,
+                           seed=42):
+
+    assert len(clean_train) == len(infected_train), "train lists misaligned"
+    assert len(clean_test)  == len(infected_test),  "test lists misaligned"
+
+    duplicates = list(set(clean_train) & set(clean_test))
+
+    rng = random.Random(seed)
+    rng.shuffle(duplicates)  # avoid order bias from set iteration
+
+    # For each duplicate clean string, count how many pairs it actually
+    # represents on each side, then drop it from whichever side keeps
+    # more slack above its target after the loss.
+    train_counts = Counter(clean_train)
+    test_counts  = Counter(clean_test)
+
+    drop_from_train, drop_from_test = set(), set()
+    train_count, test_count = len(clean_train), len(clean_test)
+
+    for dup in duplicates:
+        n_train = train_counts[dup]
+        n_test  = test_counts[dup]
+        slack_if_train_drops = (train_count - n_train) - train_per_class
+        slack_if_test_drops  = (test_count  - n_test)  - test_per_class
+        if slack_if_train_drops >= slack_if_test_drops:
+            drop_from_train.add(dup)
+            train_count -= n_train
+        else:
+            drop_from_test.add(dup)
+            test_count -= n_test
+
+    def _drop(clean, infected, dupes):
+        kept = [(c, i) for c, i in zip(clean, infected) if c not in dupes]
+        if not kept:
+            return [], []
+        c_new, i_new = map(list, zip(*kept))
+        return c_new, i_new
+
+    clean_train, infected_train = _drop(clean_train, infected_train, drop_from_train)
+    clean_test,  infected_test  = _drop(clean_test,  infected_test,  drop_from_test)
+
+    def _subsample(clean, infected, target, split_name):
+        n = len(clean)
+        if n < target:
+            print(f"[subsample] {split_name}: only {n} pairs available, "
+                  f"requested {target}. Using all {n}.")
+            return clean, infected
+        idx = rng.sample(range(n), target)
+        return [clean[i] for i in idx], [infected[i] for i in idx]
+
+    clean_train, infected_train = _subsample(clean_train, infected_train,
+                                             train_per_class, 'train')
+    clean_test,  infected_test  = _subsample(clean_test,  infected_test,
+                                             test_per_class,  'test')
+
+    full_train = clean_train + infected_train
+    full_test  = clean_test  + infected_test
+
+    print(f"[dedup] {len(duplicates)} unique clean strings shared between train and test")
+    print(f"[dedup] dropped {len(drop_from_train)} unique strings from train, "
+          f"{len(drop_from_test)} from test")
+    print(f"[dedup] train -> clean={len(clean_train)}, infected={len(infected_train)}, full={len(full_train)}")
+    print(f"[dedup] test  -> clean={len(clean_test)},  infected={len(infected_test)},  full={len(full_test)}")
+
+    return (full_train, clean_train, infected_train,
+            full_test,  clean_test,  infected_test)
+    
+    
+def _safe_div(num, den, zero_value=0.0):
+    return num / den if den != 0 else zero_value
+
+
+def _pick_mode(series):
+    m = series.mode(dropna=False)
+    if len(m) == 0:
+        return None
+    val = m.iloc[0]
+    return None if pd.isna(val) else val

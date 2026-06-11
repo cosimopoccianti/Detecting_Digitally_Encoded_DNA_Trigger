@@ -8,10 +8,6 @@ import time
 import numpy as np
 
 
-def _safe_div(num, den, zero_value=0.0):
-    return num / den if den != 0 else zero_value
-
-
 def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, outer_folds_number=5, inner_folds_number=4):
         
         start_time = time.time()
@@ -55,7 +51,7 @@ def double_cross_validation(full_dataset, groups, X, y, algo, k,n, k_mer_list, o
                 # Define the dataset partitioning for the inner cross-validation loop
                 inner_gkf = GroupKFold(n_splits=inner_folds_number)
 
-                grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=inner_gkf, scoring='f1', verbose=1, n_jobs=-1) 
+                grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=inner_gkf, scoring='f1', verbose=1, n_jobs=12) 
 
                 grid_search.fit(X_train, y_train, groups=train_groups)
                 

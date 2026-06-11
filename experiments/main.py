@@ -1,9 +1,11 @@
 # main.py
 import argparse
 import os
-from utils import merge_datasets, k_mers_sparse_matrix, tf_idf_k_mers_scores, top_kmers, get_groups
+from utils import merge_datasets, k_mers_sparse_matrix, tf_idf_k_mers_scores, top_kmers, get_groups, deduplicate_train_test
 from double_cross_validation import double_cross_validation
 import pandas as pd
+from encryption_key_eval import encryption_key_eval
+from shap_analysis import shap_analysis
 
 #------------------------------- CLI ----------------------------
 
@@ -70,6 +72,8 @@ def n_feature_type(value):
     except ValueError:
         raise argparse.ArgumentTypeError("n_feature must be 'all', an integer or a comma-separeted list (e.g. 5,10,15,20,25,...). Must be >=0, default value = [5,10,15,...,50,75,100]")
     
+    
+
 
 def parse_args():
 
@@ -94,8 +98,11 @@ def parse_args():
                         default=[0],
                         help="encryption_key")
     parser.add_argument("--n_features", type=n_feature_type, default= [*range(5,50,5), 50,75,100], help="encryption_key must be 'all', an integer, or a comma-separated list (e.g. 0,10,20,30,40,50)")
-    parser.add_argument("--out_dir", type=str, default="DNA_attacks/experiments/results")
+    parser.add_argument("--out_dir", type=str, default="/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/experiments/results")
     parser.add_argument("--random_state", type=int, default=42)
+    parser.add_argument("--mode", type=str,default='double_cross_val', help="Available mode: --double_cross_val, --mixed_key, --shap")
+    parser.add_argument("--n_shap_folds", type=int, default=1,
+                        help="Number of outer-loop splits to run SHAP on (0..outer_folds_number)")
     args = parser.parse_args()
 
     return args
@@ -112,53 +119,77 @@ def main():
 
     k_list = list(range(args.k_min,args.k_max+1))
 
+    avb_key = [10,20,30,40,50]
+
     for algo in args.algo:
-        print(f"######## {algo} ########")
+        print(f"\n############ {algo} ############")
         for f_l in args.fragment_len:
             for r_p in args.retention_pos:
                 if r_p <= f_l + 1: 
                     for e_k in args.encryption_key:
 
+                        if args.mode == 'double_cross_val':
 
-                        metrics_folder =  os.path.join(args.out_dir,f"metrics/{algo}/{args.dataset}/fragment_len_{f_l}/retention_pos_{r_p}/encryption_key_{e_k}/")
-                        os.makedirs(metrics_folder, exist_ok=True)
 
-                        full_dataset, clean_dataset, infected_dataset = merge_datasets(dataset=args.dataset, fragment_len=f_l, retention_pos=r_p, encryption_key=e_k)
+                            metrics_folder =  os.path.join(args.out_dir,f"metrics/{algo}/{args.dataset}/fragment_len_{f_l}/retention_pos_{r_p}/encryption_key_{e_k}/")
+                            os.makedirs(metrics_folder, exist_ok=True)
 
-                        result_df_path = os.path.join(metrics_folder, f'results_{args.dataset}_dataset_length_{len(full_dataset)}_algo_{algo}_fl_{f_l}_rp_{r_p}_ek{e_k}.csv')
+                            full_dataset, clean_dataset, infected_dataset = merge_datasets(dataset=args.dataset, fragment_len=f_l, retention_pos=r_p, encryption_key=e_k)
+
+                            result_df_path = os.path.join(metrics_folder, f'results_{args.dataset}_dataset_length_{len(full_dataset)}_algo_{algo}_fl_{f_l}_rp_{r_p}_ek{e_k}.csv')
+                            
+                            # Create group assignments based on unique sequences (for Leave-One-Group-Out CV)
+                            groups = get_groups(clean_dataset)
+
+                            k_df = pd.DataFrame()
+
+                            for k in k_list:
+
+                                # Create reads frequency matrix
+                                X,y,k_mers_list = k_mers_sparse_matrix(k=k, dataset_full=full_dataset, dataset_clean=clean_dataset, dataset_infected=infected_dataset)
+
+                                #Compute k-mer TF-IDF scores from the frequency matrix
+                                features_scores = tf_idf_k_mers_scores(X,k_mers_list)
+
+                                for n in args.n_features:
+
+                                    print(f"====== k: {k} - n: {n} - algo: {algo} ======")
+
+                                    top_n_kmers = top_kmers(score_df=features_scores,n=n)
+                                    # Reduce X to top-n kmers based on TF-IDF
+                                    X_reduced = X[:, top_n_kmers]
+
+                                    # Reduce kmers_list consistently
+                                    top_kmers_list = [k_mers_list[i] for i in top_n_kmers]
+                                    print(f"Selected top {n} k-mers by TF-IDF score")
+                                    print(f"Feature matrix shape: {X_reduced.shape}")
+
+                                    n_df = double_cross_validation(full_dataset=full_dataset, groups=groups, X=X_reduced, y=y, algo=algo, k=k, n=n, k_mer_list=top_kmers_list)
+                                    k_df = pd.concat([k_df,n_df])
+
+                                    k_df.to_csv(result_df_path, index=False)
+                                    
+                        elif args.mode == 'mixed_key':
+
+                            metrics_folder =  os.path.join(args.out_dir,f"metrics/{algo}/{args.dataset}/fragment_len_{f_l}/retention_pos_{r_p}/train_encryption_key_{e_k}/")
+                            os.makedirs(metrics_folder, exist_ok=True)
+                            
+                            result_df_path = os.path.join(metrics_folder, f'results_{args.dataset}_dataset_length_20000_algo_{algo}_fl_{f_l}_rp_{r_p}_ek_train{e_k}.csv')
+
+                            
+                            metrics_df = encryption_key_eval(algo=algo, args=args, avb_key=avb_key, f_l=f_l, r_p=r_p, train_e_k=e_k)
+                            
+                            metrics_df.to_csv(result_df_path, index=False)
+
                         
-                        # Create group assignments based on unique sequences (for Leave-One-Group-Out CV)
-                        groups = get_groups(clean_dataset)
-
-                        k_df = pd.DataFrame()
-
-                        for k in k_list:
-
-                            # Create reads frequency matrix
-                            X,y,k_mers_list = k_mers_sparse_matrix(k=k, dataset_full=full_dataset, dataset_clean=clean_dataset, dataset_infected=infected_dataset)
-
-                            #Compute k-mer TF-IDF scores from the frequency matrix
-                            features_scores = tf_idf_k_mers_scores(X,k_mers_list)
-
-                            for n in args.n_features:
-
-                                print(f"=== k: {k} - n: {n} ===")
-
-                                top_n_kmers = top_kmers(score_df=features_scores,n=n)
-                                # Reduce X to top-n kmers based on TF-IDF
-                                X_reduced = X[:, top_n_kmers]
-
-                                # Reduce kmers_list consistently
-                                top_kmers_list = [k_mers_list[i] for i in top_n_kmers]
-                                print(f"Selected top {n} k-mers by TF-IDF score")
-                                print(f"Feature matrix shape: {X_reduced.shape}")
-
-                                n_df = double_cross_validation(full_dataset=full_dataset, groups=groups, X=X_reduced, y=y, algo=algo, k=k, n=n, k_mer_list=top_kmers_list)
-                                k_df = pd.concat([k_df,n_df])
-
-                                k_df.to_csv(result_df_path)
-                        
-                        
+                        elif args.mode == 'shap':
+                            shap_analysis(
+                                algo=algo, dataset=args.dataset,
+                                f_l=f_l, r_p=r_p, e_k=e_k,
+                                out_dir=args.out_dir,
+                                random_state=args.random_state,
+                                n_shap_folds=args.n_shap_folds,
+                            )
 
 if __name__ == "__main__":
     main()
