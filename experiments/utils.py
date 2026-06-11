@@ -131,7 +131,7 @@ def k_mers_sparse_matrix(k, dataset_full, dataset_clean, dataset_infected, uniqu
 # This function loads and merges all datasets into a single dataset.
 def merge_datasets(dataset:['','ecoli','lentivirus'],fragment_len=5, retention_pos=5, encryption_key=0,  dataset_number=10):
     
-    base_path = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/experiments/datasets/{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
+    base_path = f"path_to/datasets/{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
 
     dataset_clean_tot = []
     dataset_infected_tot = []
