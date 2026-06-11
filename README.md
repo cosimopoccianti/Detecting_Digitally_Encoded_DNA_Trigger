@@ -76,4 +76,7 @@ Results are written as CSVs under `results/metrics/<algo>/<dataset>/...`.
 
 ## Acknowledgements
 
-The dataset injection methods and the padding/dataset_loading functions are from Islam et al., "Using Deep Learning to Detect Digitally Encoded DNA Triggers for Trojan Malware in Bio-Cyber Attacks" (https://github.com/sibleeislam/trojan-malware-in-bio-cyber-attacks).
+- Poccianti et al., "Detecting Digitally Encoded DNA Triggers for Trojan Malware in Bio-Cyber Attacks".
+
+- The dataset injection methods and the padding/dataset_loading functions are from Islam et al., "Using Deep Learning to Detect Digitally Encoded DNA Triggers for Trojan Malware in Bio-Cyber Attacks" (https://github.com/sibleeislam/trojan-malware-in-bio-cyber-attacks).
+
