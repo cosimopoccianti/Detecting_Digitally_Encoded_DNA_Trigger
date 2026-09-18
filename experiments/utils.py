@@ -8,6 +8,92 @@ import os
 from pathlib import Path
 from collections import defaultdict, Counter
 import random
+import sys
+import threading
+
+
+class PeakRSSSampler:
+    """
+    Tracks the true peak resident-set size (RSS) of this process over a span
+    of code, by polling /proc/self/status ("VmRSS:") on a background thread.
+
+    This is deliberately NOT resource.getrusage().ru_maxrss: on Linux that
+    value is a monotonic high-water mark for the *entire process lifetime*,
+    so "before"/"after" deltas around a stage only report how much *higher
+    than every earlier stage's peak* that stage pushed RSS - once one stage
+    has driven the process to its lifetime peak, every later stage reports a
+    delta of ~0 even if it genuinely used a lot of memory. Sampling the
+    *current* RSS on a timer and tracking our own running max avoids that:
+    each `with PeakRSSSampler() as s:` block gets an honest peak for exactly
+    that span, and several spans' `.peak_kb` can be combined with max() (not
+    summed - peaks don't add) to get an honest peak for a whole multi-stage
+    pipeline.
+
+    Caveat: this only sees what it manages to sample, so it can still miss a
+    spike that both rises and is freed again entirely within one poll
+    interval. To keep that blind spot small we (a) poll every few ms and (b)
+    temporarily lower sys.setswitchinterval() for the span, so a CPython
+    background thread can't be starved of the GIL for the interval's whole
+    duration by a tight Python-level loop on the main thread - without this,
+    a poll can be skipped entirely if the alloc-then-free happens between two
+    GIL hand-offs. This is a poll-based approximation, not a kernel-guaranteed
+    high-water mark; it is intended for spans of at least a few tens of
+    milliseconds (every stage in this pipeline qualifies), not microbenchmarks.
+
+    Usage:
+        with PeakRSSSampler(interval_s=0.005) as s:
+            do_work()
+        print(s.peak_kb)
+    """
+
+    def __init__(self, interval_s=0.005):
+        self.interval_s = interval_s
+        self._peak_kb = 0
+        self._stop = threading.Event()
+        self._thread = None
+        self._prev_switch_interval = None
+
+    @staticmethod
+    def _current_rss_kb():
+        try:
+            with open('/proc/self/status') as f:
+                for line in f:
+                    if line.startswith('VmRSS:'):
+                        return int(line.split()[1])  # kB, per `man proc`
+        except (OSError, ValueError, IndexError):
+            pass
+        return 0
+
+    def _poll(self):
+        while not self._stop.is_set():
+            rss = self._current_rss_kb()
+            if rss > self._peak_kb:
+                self._peak_kb = rss
+            self._stop.wait(self.interval_s)
+
+    def __enter__(self):
+        self._peak_kb = self._current_rss_kb()
+        self._stop.clear()
+        self._prev_switch_interval = sys.getswitchinterval()
+        sys.setswitchinterval(min(self._prev_switch_interval, 0.0005))
+        self._thread = threading.Thread(target=self._poll, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._stop.set()
+        self._thread.join()
+        sys.setswitchinterval(self._prev_switch_interval)
+        # catch a spike between the last poll and the thread noticing the stop
+        rss = self._current_rss_kb()
+        if rss > self._peak_kb:
+            self._peak_kb = rss
+        return False
+
+    @property
+    def peak_kb(self):
+        return self._peak_kb
+
 
 # Functions 'padding' and 'dataset_loading' are taken from Islam et al.'s repository: https://github.com/sibleeislam/trojan-malware-in-bio-cyber-attacks
 
@@ -131,7 +217,7 @@ def k_mers_sparse_matrix(k, dataset_full, dataset_clean, dataset_infected, uniqu
 # This function loads and merges all datasets into a single dataset.
 def merge_datasets(dataset:['','ecoli','lentivirus'],fragment_len=5, retention_pos=5, encryption_key=0,  dataset_number=10):
     
-    base_path = f"path_to/datasets/{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
+    base_path = f"/home/cosimo/Desktop/PhD/Cyberbiosecurity/DNA_attacks/experiments/datasets/{dataset}/fragment_len_{fragment_len}/retention_pos_{retention_pos}/encryption_key_{encryption_key}"
 
     dataset_clean_tot = []
     dataset_infected_tot = []
