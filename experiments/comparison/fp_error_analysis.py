@@ -121,6 +121,41 @@ def main():
     fp_idx = np.where((y == 0) & (y_pred_full == 1))[0]
     fn_idx = np.where((y == 1) & (y_pred_full == 0))[0]
     tp_idx = np.where((y == 1) & (y_pred_full == 1))[0]
+    
+    outcome = np.full(len(y), "", dtype="<U2")
+    for name, idx in {
+        "TN": tn_idx, "FP": fp_idx,
+        "FN": fn_idx, "TP": tp_idx,
+    }.items():
+        outcome[idx] = name
+
+    prediction_df = pd.DataFrame({
+        "read_id": np.arange(len(y)),
+        "outer_fold": fold_of_read,
+        "true_label": y,
+        "predicted_label": y_pred_full,
+        "outcome": outcome,
+        "probability_infected": proba_full,
+        "decision_score": decision_full,
+        "absolute_decision_score": np.abs(decision_full),
+    })
+     
+    prediction_df["sequence"] = full_dataset
+
+    feature_df = pd.DataFrame(
+        X_reduced.toarray(),
+        columns=[f"kmer__{kmer}" for kmer in top_kmers_list],
+    )
+
+    prediction_df = pd.concat(
+        [prediction_df, feature_df],
+        axis=1,
+    )
+    
+    prediction_df.to_csv(
+        os.path.join(out_folder, f"all_reads_predictions_{tag}.csv"),
+        index=False,
+    )
 
     log(f"Reconstructed confusion counts: TN={len(tn_idx)} FP={len(fp_idx)} FN={len(fn_idx)} TP={len(tp_idx)}")
     log(f"Known aggregate FP from double_cross_validation.py results: {known_fp}")
@@ -138,6 +173,58 @@ def main():
     topN = topN.rename(columns={'mean': 'mean_abs_shap'})
 
     per_read_shap = pd.read_csv(per_read_path)
+    prediction_columns = [
+        "read_id",
+        "outer_fold",
+        "true_label",
+        "predicted_label",
+        "outcome",
+        "probability_infected",
+        "decision_score",
+    ]
+
+    shap_reference = per_read_shap.rename(
+        columns={"split": "outer_fold"}
+    ).merge(
+        prediction_df[prediction_columns],
+        on=["read_id", "outer_fold"],
+        how="left",
+        validate="many_to_one",
+        indicator=True,
+    )
+
+    if not shap_reference["_merge"].eq("both").all():
+        raise ValueError("Some SHAP reads have no matching prediction.")
+
+    if not shap_reference["label"].eq(
+        shap_reference["true_label"]
+    ).all():
+        raise ValueError("SHAP labels do not match the prediction table.")
+
+    shap_reference = shap_reference.drop(columns="_merge")
+    
+    baseline_by_fold = {}
+
+    for split in sorted(shap_reference["outer_fold"].unique()):
+        source_path = os.path.join(
+            shap_folder,
+            f"shap_values_{tag}_split{int(split)}.npz",
+        )
+
+        with np.load(source_path, allow_pickle=False) as saved:
+            baseline_by_fold[int(split)] = float(
+                np.asarray(saved["expected_value"]).item()
+            )
+
+    shap_reference["base_value"] = (
+        shap_reference["outer_fold"].map(baseline_by_fold)
+    )
+
+    shap_reference.to_csv(
+        os.path.join(out_folder, f"shap_reference_{tag}.csv.gz"),
+        index=False,
+        compression="gzip",
+    )
     signed = per_read_shap.groupby('k_mer')['shap_value'].mean().rename('mean_signed_shap')
     topN = topN.merge(signed, on='k_mer', how='left')
 

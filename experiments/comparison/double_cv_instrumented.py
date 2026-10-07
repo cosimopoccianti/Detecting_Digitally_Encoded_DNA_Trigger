@@ -61,7 +61,7 @@ def double_cross_validation_instrumented(full_dataset, groups, X, y, algo, k, n,
 
             inner_gkf = GroupKFold(n_splits=inner_folds_number)
 
-            grid_search = GridSearchCV(estimator=model, param_grid=grid, cv=inner_gkf, scoring='f1', verbose=1, n_jobs=12)
+            grid_search = GridSearchCV(estimator=model, param_grid=grid, cv=inner_gkf, scoring='f1', verbose=1, n_jobs=-1)
 
             grid_search.fit(X_train, y_train, groups=train_groups)
 
