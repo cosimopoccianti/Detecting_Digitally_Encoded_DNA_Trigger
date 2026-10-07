@@ -1,6 +1,6 @@
-# Islam et al. 1D-CNN, outer-only 5-fold LOGO double-CV comparison: runs
+# Islam et al. 1D-CNN, five-fold grouped evaluation (no inner CV): runs
 # cnn_islam_worker.py once per outer fold (architecture/hyperparameters fixed,
-# no inner tuning - matches Islam et al.), in the dedicated Python 3.8 /
+# 3000 epochs without early stopping), in the dedicated Python 3.8 /
 # TensorFlow 2.4.0 venv (CPU-only), then aggregates across folds the same way
 # double_cv_instrumented.py aggregates its outer loop.
 

@@ -1,8 +1,10 @@
-# Copy of ../Islam/modified_x_comparision/trojan_cnn_instrumented.py, kept
-# separate (original untouched) and parameterized by --test_fold instead of
-# the hardcoded groups.max(), so cnn_islam.py can run it once per outer LOGO
-# fold for double cross-validation. Everything else - architecture,
-# hyperparameters, training procedure, venv requirement - is unchanged.
+# Islam et al. CNN adapted to the common five-fold evaluation protocol.
+# Model/training reference: trojan_attack/trojan_cnn.py at upstream commit
+# 7f6bee71ac43bc2c464cf1cf5e38ebbe71ce0e3a, not the locally edited copy.
+# Retains the original architecture, optimizer and fixed 3000-epoch training
+# (no early stopping). Uses epochs instead of the old nb_epoch API keyword.
+# --test_fold selects the held-out group; timing/RSS and CSV output are added
+# for comparison with the SVM. See CNN_PROTOCOL.md for retained differences.
 #
 # Runs standalone in the dedicated Python 3.8 / TensorFlow 2.4.0 venv
 # (experiments/Islam/venv_cnn), CPU-only.
@@ -23,7 +25,6 @@ from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.layers import Conv1D, Dense, MaxPooling1D, Flatten, Dropout
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.regularizers import l2
-from tensorflow.keras.callbacks import EarlyStopping
 import tensorflow.keras as keras
 
 SEQUENCE_SIZE = 1000
@@ -84,7 +85,7 @@ class PeakRSSSampler:
         return self._peak_kb
 
 
-# --- verbatim from trojan_cnn.py ---
+# --- model and preprocessing from the committed reference ---
 
 def padding(seq_size_max, line):
     less = seq_size_max - len(line)
@@ -178,17 +179,14 @@ def build_model(input_len, epochs=3000, lrate=0.001):
 
 
 def train_model(model, train_features, train_labels, epochs, log_dir):
-    """Verbatim training call from trojan_cnn.py main()."""
-    early_stopping = EarlyStopping(
-        monitor='val_binary_accuracy',
-        patience=100,
-        mode='max',  # We want to maximize accuracy
-        restore_best_weights=True,
-        verbose=1
-    )
+    """Train for the full epoch budget, as in the committed Islam code.
+
+    Only the legacy nb_epoch keyword is updated to epochs for TensorFlow 2.4.
+    TensorBoard logs validation metrics; it does not select or restore weights.
+    """
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir)
     history = model.fit(train_features, train_labels, epochs=epochs, batch_size=100,
-                         callbacks=[tensorboard_callback, early_stopping], validation_split=0.10)
+                         callbacks=[tensorboard_callback], validation_split=0.10)
     return history
 
 
@@ -276,7 +274,8 @@ def main():
     model_params = {
         "architecture": "Conv1D(32,5)-Dropout(.2)-Conv1D(32,5)-Dropout(.2)-MaxPool(2)-Flatten-Dense(16)-Dropout(.1)-Dense(2,softmax)",
         "optimizer": "SGD", "lr": 0.001, "momentum": 0.9, "decay": 0.001 / epochs, "nesterov": False,
-        "epochs": epochs, "batch_size": 100, "early_stopping_patience": 100,
+        "epochs": epochs, "batch_size": 100, "validation_split": 0.10,
+        "early_stopping": False,
     }
 
     # True peak RSS for the whole cnn_islam pipeline: the worst moment across
